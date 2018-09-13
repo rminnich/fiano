@@ -30,7 +30,7 @@ func (v *JSON) Visit(f uefi.Firmware) error {
 }
 
 func init() {
-	RegisterCLI("json", 0, func(args []string) (uefi.Visitor, error) {
+	RegisterCLI("json", "Produce JSON for the full firmware volume", 0, func(args []string) (uefi.Visitor, error) {
 		return &JSON{}, nil
 	})
 }

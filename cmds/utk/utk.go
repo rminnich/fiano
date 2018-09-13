@@ -51,10 +51,12 @@
 //     `extract DIR`: Extract the BIOS to the given directory. Remember that
 //                    operations are applied left-to-right, so only the
 //                    operations to the left are included in the new image.
+//      'help': print out some helpful text.
 package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -67,6 +69,12 @@ func main() {
 	flag.Parse()
 	if flag.NArg() == 0 {
 		log.Fatal("at least one argument is required")
+	}
+
+	// help can't be registered as a visitor because it has nothing to visit.
+	if flag.NArg() == 1 && flag.Args()[0] == "help" {
+		fmt.Printf("%s", visitors.ListCLI())
+		os.Exit(0)
 	}
 
 	v, err := visitors.ParseCLI(flag.Args()[1:])

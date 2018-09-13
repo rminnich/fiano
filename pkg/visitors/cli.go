@@ -17,6 +17,7 @@ var visitorRegistry = map[string]visitorEntry{}
 
 type visitorEntry struct {
 	numArgs       int
+	help          string
 	createVisitor func([]string) (uefi.Visitor, error)
 }
 
@@ -24,13 +25,14 @@ type visitorEntry struct {
 // the arguments with `ParseCLI`. For a Visitor to be accessible from the
 // command line, it should have an init function which registers a
 // `createVisitor` function here.
-func RegisterCLI(name string, numArgs int, createVisitor func([]string) (uefi.Visitor, error)) {
+func RegisterCLI(name string, help string, numArgs int, createVisitor func([]string) (uefi.Visitor, error)) {
 	if _, ok := visitorRegistry[name]; ok {
 		panic(fmt.Sprintf("two visitors registered the same name: '%s'", name))
 	}
 	visitorRegistry[name] = visitorEntry{
 		numArgs:       numArgs,
 		createVisitor: createVisitor,
+		help:          help,
 	}
 }
 
@@ -67,4 +69,16 @@ func ExecuteCLI(f uefi.Firmware, v []uefi.Visitor) error {
 		}
 	}
 	return nil
+}
+
+func ListCLI() string {
+	var s string
+	for n, i := range visitorRegistry {
+		if i.help == "" {
+			s += fmt.Sprintf("%s: %v\n", n, i)
+			continue
+		}
+		s += fmt.Sprintf("%s: %s\n", n, i.help)
+	}
+	return s
 }
