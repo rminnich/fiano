@@ -19,7 +19,7 @@ func TestRemoveNoPad(t *testing.T) {
 	// Apply the visitor.
 	remove := &Remove{
 		Predicate: FindFileGUIDPredicate(*testGUID),
-		Pad:       false,
+		op:        del,
 	}
 	if err := remove.Run(f); err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestRemovePad(t *testing.T) {
 	// Apply the visitor.
 	remove := &Remove{
 		Predicate: FindFileGUIDPredicate(*testGUID),
-		Pad:       true,
+		op:        pad,
 	}
 	if err := remove.Run(f); err != nil {
 		t.Fatal(err)
@@ -70,6 +70,43 @@ func TestRemovePad(t *testing.T) {
 	// We expect no match.
 	results := find(t, f, testGUID)
 	if len(results) != 0 {
+		t.Fatalf("got %d matches; expected 0", len(results))
+	}
+	// We expect one more pad file
+	if err := count.Run(f); err != nil {
+		t.Fatal(err)
+	}
+	if newPadCount := count.FileTypeCount["EFI_FV_FILETYPE_FFS_PAD"]; padCount+1 != newPadCount {
+		t.Errorf("differing number of pad files: expected %v, got %v",
+			padCount+1, newPadCount)
+	}
+}
+
+func TestRemoveZap(t *testing.T) {
+	f := parseImage(t)
+
+	count := &Count{}
+	if err := count.Run(f); err != nil {
+		t.Fatal(err)
+	}
+	padCount := count.FileTypeCount["EFI_FV_FILETYPE_FFS_PAD"]
+	// Apply the visitor.
+	remove := &Remove{
+		Predicate: FindFileGUIDPredicate(*testGUID),
+		op:        zap,
+	}
+	if err := remove.Run(f); err != nil {
+		t.Fatal(err)
+	}
+
+	// We expect one match.
+	if len(remove.Matches) != 1 {
+		t.Fatalf("got %d matches; expected 1", len(remove.Matches))
+	}
+
+	// We expect one match.
+	results := find(t, f, testGUID)
+	if len(results) != 1 {
 		t.Fatalf("got %d matches; expected 0", len(results))
 	}
 	// We expect one more pad file

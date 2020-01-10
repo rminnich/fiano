@@ -13,11 +13,19 @@ import (
 	"github.com/linuxboot/fiano/pkg/uefi"
 )
 
+type op int
+
+const (
+	del op = iota
+	pad
+	zap
+)
+
 // Remove all firmware files with the given GUID.
 type Remove struct {
 	// Input
 	Predicate  func(f uefi.Firmware) bool
-	Pad        bool
+	op         op
 	RemoveDxes bool // I hate this, but there's no good way to work around our current structure
 
 	// Output
@@ -90,14 +98,17 @@ func (v *Remove) Visit(f uefi.Firmware) error {
 					originalList := append([]*uefi.File{}, f.Files...)
 
 					m := m.(*uefi.File)
-					if v.Pad || m.Header.Type == uefi.FVFileTypePEIM {
+					switch {
+					case v.op == zap:
+						m.Header.Type = uefi.FVFileTypePad
+					case v.op == pad || m.Header.Type == uefi.FVFileTypePEIM:
 						// Create a new pad file of the exact same size
 						pf, err := uefi.CreatePadFile(m.Header.ExtendedSize)
 						if err != nil {
 							return err
 						}
 						f.Files[i] = pf
-					} else {
+					default:
 						f.Files = append(f.Files[:i], f.Files[i+1:]...)
 					}
 					v.printf("Remove: %d files now\n", len(f.Files))
@@ -125,7 +136,18 @@ func init() {
 		}
 		return &Remove{
 			Predicate: pred,
-			Pad:       false,
+			op:        del,
+			W:         os.Stdout,
+		}, nil
+	})
+	RegisterCLI("zap", "zap a file (change type to pad)", 1, func(args []string) (uefi.Visitor, error) {
+		pred, err := FindFilePredicate(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return &Remove{
+			Predicate: pred,
+			op:        zap,
 			W:         os.Stdout,
 		}, nil
 	})
@@ -136,7 +158,7 @@ func init() {
 		}
 		return &Remove{
 			Predicate: pred,
-			Pad:       true,
+			op:        pad,
 			W:         os.Stdout,
 		}, nil
 	})
